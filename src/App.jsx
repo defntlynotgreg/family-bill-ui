@@ -11,7 +11,7 @@ function App() {
   const [internet, setInternet] = useState('');
 
   const fetchBills = () => {
-    fetch('http://127.0.0.1:8000/bills/all')
+    fetch('https://family-bill-api.onrender.com')
       .then(res => res.json())
       .then(data => {
         if (data.status === 'Success') {
@@ -26,7 +26,7 @@ function App() {
   useEffect(() => { fetchBills(); }, []);
 
   const togglePayment = (month, year, person, currentStatus) => {
-    fetch('http://127.0.0.1:8000/bills/update-payment', {
+    fetch('https://family-bill-api.onrender.com', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ month, year, person, has_paid: !currentStatus })
@@ -39,7 +39,7 @@ function App() {
   const handleAddBill = (e) => {
     e.preventDefault(); // Prevents the page from refreshing on submit
     
-    fetch('http://127.0.0.1:8000/bills/add', {
+    fetch('https://family-bill-api.onrender.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
