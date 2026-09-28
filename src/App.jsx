@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 
-// Used to map string months to numbers for accurate chronological sorting
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const BillCard = ({ bill, isDashboard = false, togglePayment }) => {
@@ -53,10 +52,17 @@ const BillCard = ({ bill, isDashboard = false, togglePayment }) => {
         {['me', 'sister', 'cousin'].map(person => (
           <button key={person} onClick={() => togglePayment(bill.month, bill.year, person, bill.paymentStatus[person])}
             style={{ 
-              padding: '12px 8px', border: 'none', cursor: 'pointer', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', transition: 'all 0.2s',
+              padding: '12px 8px', border: 'none', cursor: 'pointer', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', transition: 'all 0.1s', // Sped up transition animation
               backgroundColor: bill.paymentStatus[person] ? '#16a34a' : '#f1f5f9',
-              color: bill.paymentStatus[person] ? 'white' : '#64748b'
-            }}>
+              color: bill.paymentStatus[person] ? 'white' : '#64748b',
+              transform: 'scale(1)', // Prepares element for tap feedback
+            }}
+            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'} // Tap down squeeze effect
+            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}     // Tap release bounce back
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.95)'} 
+            onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
             {person.charAt(0).toUpperCase() + person.slice(1)}<br/>
             <span style={{ fontSize: '18px', display: 'block', marginTop: '4px' }}>{bill.paymentStatus[person] ? '✓' : '○'}</span>
           </button>
@@ -72,13 +78,12 @@ function App() {
   
   const API_BASE = "https://family-bill-api.onrender.com";
 
-  // Reusable styling block for all inputs to guarantee text visibility
   const inputStyle = {
     padding: '12px',
     borderRadius: '8px',
     border: '1px solid #cbd5e1',
     backgroundColor: '#f8fafc',
-    color: '#0f172a', // Forces text to be dark, fixing the invisible typing bug
+    color: '#0f172a',
     width: '100%',
     boxSizing: 'border-box'
   };
@@ -101,7 +106,6 @@ function App() {
       .then(res => res.json())
       .then(data => {
         if (data.status === 'Success') {
-          // Sorts chronologically: highest year first, then highest month index first
           const sorted = data.data.sort((a, b) => {
             if (a.year !== b.year) {
               return b.year - a.year; 
@@ -116,15 +120,43 @@ function App() {
 
   useEffect(() => { fetchBills(); }, []);
 
+  // HIGH-SPEED OPTIMISTIC UPDATE
   const togglePayment = (month, year, person, currentStatus) => {
+    const updatedStatus = !currentStatus; // Flip the status immediately
+
+    // 1. Instantly update the React UI State without waiting for the server
+    setBills(prevBills => prevBills.map(bill => {
+      if (bill.month === month && bill.year === year) {
+        return {
+          ...bill,
+          paymentStatus: {
+            ...bill.paymentStatus,
+            [person]: updatedStatus
+          }
+        };
+      }
+      return bill;
+    }));
+
+    // 2. Silently ping the Render API in the background to save the change
     fetch(`${API_BASE}/bills/update-payment`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ month, year, person, has_paid: !currentStatus })
+      body: JSON.stringify({ month, year, person, has_paid: updatedStatus })
     })
     .then(res => res.json())
-    .then(data => { if (data.status === 'Success') fetchBills(); })
-    .catch(err => console.error("Error updating:", err));
+    .then(data => { 
+      // If the backend fails to save, revert the UI by re-fetching the real database truth
+      if (data.status !== 'Success') {
+        console.error("Backend failed to save payment state.");
+        fetchBills(); 
+      }
+    })
+    .catch(err => {
+      // If the internet drops during the tap, revert the UI
+      console.error("Network error during payment update:", err);
+      fetchBills(); 
+    });
   };
 
   const handleAddBill = (e) => {
