@@ -1,25 +1,90 @@
 import { useState, useEffect } from 'react';
 
+// 1. EXTRACTED BILL CARD COMPONENT (Prevents UI glitching when expanded)
+const BillCard = ({ bill, isDashboard = false, togglePayment }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div style={{ backgroundColor: 'white', padding: '20px', marginBottom: '15px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: isDashboard ? '2px solid #2563eb' : '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h2 style={{ margin: 0, color: '#0f172a', fontSize: isDashboard ? '24px' : '20px' }}>{bill.month} {bill.year}</h2>
+        {isDashboard && <span style={{ backgroundColor: '#2563eb', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>CURRENT</span>}
+      </div>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Due</span>
+          <span style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>₱{bill.totalDue}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+          <span style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Per Head</span>
+          <span style={{ fontSize: '20px', fontWeight: '800', color: '#2563eb' }}>₱{bill.contributionPerHead}</span>
+        </div>
+      </div>
+
+      {/* EXPAND BUTTON */}
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{ width: '100%', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#64748b', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px', transition: '0.2s' }}
+      >
+        {isExpanded ? 'Hide Breakdown ▲' : 'Show Breakdown ▼'}
+      </button>
+
+      {/* BREAKDOWN DETAILS */}
+      {isExpanded && bill.payables && (
+        <div style={{ backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '8px', marginBottom: '15px', fontSize: '14px', color: '#334155', animation: 'fadeIn 0.2s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span>Rent & Water (Lola Flor):</span>
+            <strong>₱{bill.payables['Lola Flor (Rent & Water)']}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span>Electricity (Meralco):</span>
+            <strong>₱{bill.payables['Meralco (Electricity)']}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Internet (Converge):</span>
+            <strong>₱{bill.payables['Converge (Internet)']}</strong>
+          </div>
+        </div>
+      )}
+
+      <h4 style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '14px' }}>Tap to mark as paid:</h4>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+        {['me', 'sister', 'cousin'].map(person => (
+          <button key={person} onClick={() => togglePayment(bill.month, bill.year, person, bill.paymentStatus[person])}
+            style={{ 
+              padding: '12px 8px', border: 'none', cursor: 'pointer', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', transition: 'all 0.2s',
+              backgroundColor: bill.paymentStatus[person] ? '#16a34a' : '#f1f5f9',
+              color: bill.paymentStatus[person] ? 'white' : '#64748b'
+            }}>
+            {person.charAt(0).toUpperCase() + person.slice(1)}<br/>
+            <span style={{ fontSize: '18px', display: 'block', marginTop: '4px' }}>{bill.paymentStatus[person] ? '✓' : '○'}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// 2. MAIN APP COMPONENT
 function App() {
   const [bills, setBills] = useState([]);
-  const [activeTab, setActiveTab] = useState('home'); // 'home', 'history', 'calculator', 'add'
+  const [activeTab, setActiveTab] = useState('home'); 
   
-  // 🔴 HARDCODED API BASE - This prevents the URL endpoint bugs!
   const API_BASE = "https://family-bill-api.onrender.com";
 
-  // --- ADD MONTH STATES ---
-  const [month, setMonth] = useState('');
-  const [year, setYear] = useState(new Date().getFullYear());
+  // Form States - Defaulting to September 2026
+  const [month, setMonth] = useState('September');
+  const [year, setYear] = useState(2026);
   const [rentAndWater, setRentAndWater] = useState('');
   const [electricity, setElectricity] = useState('');
   const [internet, setInternet] = useState('');
 
-  // --- CALCULATOR STATES ---
+  // Calculator States
   const [calcRent, setCalcRent] = useState('');
   const [calcElec, setCalcElec] = useState('');
   const [calcInt, setCalcInt] = useState('');
   
-  // Auto-calculate values as you type
   const calcTotal = (parseFloat(calcRent || 0) + parseFloat(calcElec || 0) + parseFloat(calcInt || 0)).toFixed(2);
   const calcPerHead = (parseFloat(calcTotal) / 3).toFixed(2);
 
@@ -65,50 +130,14 @@ function App() {
     .then(data => {
       if (data.status === 'Success') {
         fetchBills();
-        setMonth(''); setRentAndWater(''); setElectricity(''); setInternet('');
-        setActiveTab('home'); // Redirect back to dashboard to see the new bill
+        setRentAndWater(''); setElectricity(''); setInternet('');
+        setActiveTab('home'); 
       }
     })
     .catch(err => console.error("Error adding bill:", err));
   };
 
   const currentBill = bills.length > 0 ? bills[0] : null;
-
-  // --- REUSABLE CARD COMPONENT ---
-  const BillCard = ({ bill, isDashboard = false }) => (
-    <div style={{ backgroundColor: 'white', padding: '20px', marginBottom: '15px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: isDashboard ? '2px solid #2563eb' : '1px solid #e2e8f0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h2 style={{ margin: 0, color: '#0f172a', fontSize: isDashboard ? '24px' : '20px' }}>{bill.month} {bill.year}</h2>
-        {isDashboard && <span style={{ backgroundColor: '#2563eb', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>CURRENT</span>}
-      </div>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Due</span>
-          <span style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>₱{bill.totalDue}</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-          <span style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Per Head</span>
-          <span style={{ fontSize: '20px', fontWeight: '800', color: '#2563eb' }}>₱{bill.contributionPerHead}</span>
-        </div>
-      </div>
-
-      <h4 style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '14px' }}>Tap to mark as paid:</h4>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-        {['me', 'sister', 'cousin'].map(person => (
-          <button key={person} onClick={() => togglePayment(bill.month, bill.year, person, bill.paymentStatus[person])}
-            style={{ 
-              padding: '12px 8px', border: 'none', cursor: 'pointer', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', transition: 'all 0.2s',
-              backgroundColor: bill.paymentStatus[person] ? '#16a34a' : '#f1f5f9',
-              color: bill.paymentStatus[person] ? 'white' : '#64748b'
-            }}>
-            {person.charAt(0).toUpperCase() + person.slice(1)}<br/>
-            <span style={{ fontSize: '18px', display: 'block', marginTop: '4px' }}>{bill.paymentStatus[person] ? '✓' : '○'}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#f4f4f5', minHeight: '100vh', paddingBottom: '80px' }}>
@@ -118,38 +147,35 @@ function App() {
         <h1 style={{ margin: 0, textAlign: 'center', color: '#0f172a', fontSize: '20px', fontWeight: '800' }}>⚡ Bill Tracker</h1>
       </div>
 
-      {/* MAIN CONTENT AREA */}
       <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
         
-        {/* VIEW: HOME DASHBOARD */}
+        {/* DASHBOARD */}
         {activeTab === 'home' && (
           <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ marginTop: 0, color: '#475569' }}>Dashboard</h3>
-            {bills.length === 0 ? <p>Loading data...</p> : currentBill ? <BillCard bill={currentBill} isDashboard={true} /> : <p>No bills added yet.</p>}
+            {bills.length === 0 ? <p>Loading data...</p> : currentBill ? <BillCard bill={currentBill} isDashboard={true} togglePayment={togglePayment} /> : <p>No bills added yet.</p>}
           </div>
         )}
 
-        {/* VIEW: HISTORY */}
+        {/* HISTORY */}
         {activeTab === 'history' && (
           <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ marginTop: 0, color: '#475569' }}>Billing History</h3>
-            {bills.length === 0 ? <p>Loading data...</p> : bills.map(bill => <BillCard key={bill.id} bill={bill} />)}
+            {bills.length === 0 ? <p>Loading data...</p> : bills.map(bill => <BillCard key={bill.id} bill={bill} togglePayment={togglePayment} />)}
           </div>
         )}
 
-        {/* VIEW: CALCULATOR (Math Only) */}
+        {/* CALCULATOR */}
         {activeTab === 'calculator' && (
           <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ marginTop: 0, color: '#475569' }}>Quick Calculator</h3>
             <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
               <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#64748b' }}>Input amounts to see the split. This does not save to the database.</p>
-              
               <div style={{ display: 'grid', gap: '15px', marginBottom: '20px' }}>
                 <input type="number" placeholder="Rent & Water (₱)" value={calcRent} onChange={e => setCalcRent(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
                 <input type="number" placeholder="Meralco (₱)" value={calcElec} onChange={e => setCalcElec(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
                 <input type="number" placeholder="Converge (₱)" value={calcInt} onChange={e => setCalcInt(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
               </div>
-
               <div style={{ backgroundColor: '#eff6ff', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 'bold' }}>TOTAL</div>
@@ -164,14 +190,22 @@ function App() {
           </div>
         )}
 
-        {/* VIEW: ADD NEW MONTH */}
+        {/* ADD NEW MONTH */}
         {activeTab === 'add' && (
           <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ marginTop: 0, color: '#475569' }}>Add New Month</h3>
             <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
               <form onSubmit={handleAddBill} style={{ display: 'grid', gap: '15px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <input required placeholder="Month" value={month} onChange={e => setMonth(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
+                  
+                  {/* MONTH DROPDOWN */}
+                  <select required value={month} onChange={e => setMonth(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
+                    <option value="" disabled>Select Month</option>
+                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+
                   <input required type="number" placeholder="Year" value={year} onChange={e => setYear(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
                 </div>
                 <input required type="number" step="0.01" placeholder="Rent & Water (₱)" value={rentAndWater} onChange={e => setRentAndWater(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
@@ -185,23 +219,19 @@ function App() {
         )}
       </div>
 
-      {/* 4-BUTTON BOTTOM NAVIGATION BAR */}
+      {/* NAVIGATION */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'white', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: '15px 5px', borderTop: '1px solid #e2e8f0', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <button onClick={() => setActiveTab('home')} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', color: activeTab === 'home' ? '#2563eb' : '#94a3b8', fontWeight: activeTab === 'home' ? 'bold' : 'normal', cursor: 'pointer' }}>
-          <span style={{ fontSize: '22px', marginBottom: '4px' }}>🏠</span>
-          <span style={{ fontSize: '11px' }}>Home</span>
+          <span style={{ fontSize: '22px', marginBottom: '4px' }}>🏠</span><span style={{ fontSize: '11px' }}>Home</span>
         </button>
         <button onClick={() => setActiveTab('history')} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', color: activeTab === 'history' ? '#2563eb' : '#94a3b8', fontWeight: activeTab === 'history' ? 'bold' : 'normal', cursor: 'pointer' }}>
-          <span style={{ fontSize: '22px', marginBottom: '4px' }}>📜</span>
-          <span style={{ fontSize: '11px' }}>History</span>
+          <span style={{ fontSize: '22px', marginBottom: '4px' }}>📜</span><span style={{ fontSize: '11px' }}>History</span>
         </button>
         <button onClick={() => setActiveTab('calculator')} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', color: activeTab === 'calculator' ? '#2563eb' : '#94a3b8', fontWeight: activeTab === 'calculator' ? 'bold' : 'normal', cursor: 'pointer' }}>
-          <span style={{ fontSize: '22px', marginBottom: '4px' }}>🧮</span>
-          <span style={{ fontSize: '11px' }}>Calc</span>
+          <span style={{ fontSize: '22px', marginBottom: '4px' }}>🧮</span><span style={{ fontSize: '11px' }}>Calc</span>
         </button>
         <button onClick={() => setActiveTab('add')} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', color: activeTab === 'add' ? '#2563eb' : '#94a3b8', fontWeight: activeTab === 'add' ? 'bold' : 'normal', cursor: 'pointer' }}>
-          <span style={{ fontSize: '22px', marginBottom: '4px' }}>➕</span>
-          <span style={{ fontSize: '11px' }}>Add</span>
+          <span style={{ fontSize: '22px', marginBottom: '4px' }}>➕</span><span style={{ fontSize: '11px' }}>Add</span>
         </button>
       </div>
 
