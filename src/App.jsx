@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 
-// 1. EXTRACTED BILL CARD COMPONENT (Prevents UI glitching when expanded)
+// Used to map string months to numbers for accurate chronological sorting
+const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
 const BillCard = ({ bill, isDashboard = false, togglePayment }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -22,7 +24,6 @@ const BillCard = ({ bill, isDashboard = false, togglePayment }) => {
         </div>
       </div>
 
-      {/* EXPAND BUTTON */}
       <button 
         onClick={() => setIsExpanded(!isExpanded)}
         style={{ width: '100%', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#64748b', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px', transition: '0.2s' }}
@@ -30,7 +31,6 @@ const BillCard = ({ bill, isDashboard = false, togglePayment }) => {
         {isExpanded ? 'Hide Breakdown ▲' : 'Show Breakdown ▼'}
       </button>
 
-      {/* BREAKDOWN DETAILS */}
       {isExpanded && bill.payables && (
         <div style={{ backgroundColor: '#f1f5f9', padding: '15px', borderRadius: '8px', marginBottom: '15px', fontSize: '14px', color: '#334155', animation: 'fadeIn 0.2s' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -66,21 +66,29 @@ const BillCard = ({ bill, isDashboard = false, togglePayment }) => {
   );
 };
 
-// 2. MAIN APP COMPONENT
 function App() {
   const [bills, setBills] = useState([]);
   const [activeTab, setActiveTab] = useState('home'); 
   
   const API_BASE = "https://family-bill-api.onrender.com";
 
-  // Form States - Defaulting to September 2026
+  // Reusable styling block for all inputs to guarantee text visibility
+  const inputStyle = {
+    padding: '12px',
+    borderRadius: '8px',
+    border: '1px solid #cbd5e1',
+    backgroundColor: '#f8fafc',
+    color: '#0f172a', // Forces text to be dark, fixing the invisible typing bug
+    width: '100%',
+    boxSizing: 'border-box'
+  };
+
   const [month, setMonth] = useState('September');
   const [year, setYear] = useState(2026);
   const [rentAndWater, setRentAndWater] = useState('');
   const [electricity, setElectricity] = useState('');
   const [internet, setInternet] = useState('');
 
-  // Calculator States
   const [calcRent, setCalcRent] = useState('');
   const [calcElec, setCalcElec] = useState('');
   const [calcInt, setCalcInt] = useState('');
@@ -93,7 +101,13 @@ function App() {
       .then(res => res.json())
       .then(data => {
         if (data.status === 'Success') {
-          const sorted = data.data.reverse(); 
+          // Sorts chronologically: highest year first, then highest month index first
+          const sorted = data.data.sort((a, b) => {
+            if (a.year !== b.year) {
+              return b.year - a.year; 
+            }
+            return monthNames.indexOf(b.month) - monthNames.indexOf(a.month);
+          });
           setBills(sorted);
         }
       })
@@ -140,16 +154,14 @@ function App() {
   const currentBill = bills.length > 0 ? bills[0] : null;
 
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#f4f4f5', minHeight: '100vh', paddingBottom: '80px' }}>
+    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#f4f4f5', minHeight: '100vh', paddingBottom: '80px', color: '#0f172a' }}>
       
-      {/* HEADER */}
       <div style={{ backgroundColor: 'white', padding: '20px', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <h1 style={{ margin: 0, textAlign: 'center', color: '#0f172a', fontSize: '20px', fontWeight: '800' }}>⚡ Bill Tracker</h1>
       </div>
 
       <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
         
-        {/* DASHBOARD */}
         {activeTab === 'home' && (
           <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ marginTop: 0, color: '#475569' }}>Dashboard</h3>
@@ -157,7 +169,6 @@ function App() {
           </div>
         )}
 
-        {/* HISTORY */}
         {activeTab === 'history' && (
           <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ marginTop: 0, color: '#475569' }}>Billing History</h3>
@@ -165,16 +176,15 @@ function App() {
           </div>
         )}
 
-        {/* CALCULATOR */}
         {activeTab === 'calculator' && (
           <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ marginTop: 0, color: '#475569' }}>Quick Calculator</h3>
             <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
               <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#64748b' }}>Input amounts to see the split. This does not save to the database.</p>
               <div style={{ display: 'grid', gap: '15px', marginBottom: '20px' }}>
-                <input type="number" placeholder="Rent & Water (₱)" value={calcRent} onChange={e => setCalcRent(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
-                <input type="number" placeholder="Meralco (₱)" value={calcElec} onChange={e => setCalcElec(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
-                <input type="number" placeholder="Converge (₱)" value={calcInt} onChange={e => setCalcInt(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
+                <input type="number" placeholder="Rent & Water (₱)" value={calcRent} onChange={e => setCalcRent(e.target.value)} style={inputStyle} />
+                <input type="number" placeholder="Meralco (₱)" value={calcElec} onChange={e => setCalcElec(e.target.value)} style={inputStyle} />
+                <input type="number" placeholder="Converge (₱)" value={calcInt} onChange={e => setCalcInt(e.target.value)} style={inputStyle} />
               </div>
               <div style={{ backgroundColor: '#eff6ff', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
                 <div>
@@ -190,7 +200,6 @@ function App() {
           </div>
         )}
 
-        {/* ADD NEW MONTH */}
         {activeTab === 'add' && (
           <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
             <h3 style={{ marginTop: 0, color: '#475569' }}>Add New Month</h3>
@@ -198,28 +207,26 @@ function App() {
               <form onSubmit={handleAddBill} style={{ display: 'grid', gap: '15px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   
-                  {/* MONTH DROPDOWN */}
-                  <select required value={month} onChange={e => setMonth(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }}>
+                  <select required value={month} onChange={e => setMonth(e.target.value)} style={inputStyle}>
                     <option value="" disabled>Select Month</option>
-                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
+                    {monthNames.map(m => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
 
-                  <input required type="number" placeholder="Year" value={year} onChange={e => setYear(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
+                  <input required type="number" placeholder="Year" value={year} onChange={e => setYear(e.target.value)} style={inputStyle} />
                 </div>
-                <input required type="number" step="0.01" placeholder="Rent & Water (₱)" value={rentAndWater} onChange={e => setRentAndWater(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
-                <input required type="number" step="0.01" placeholder="Meralco (₱)" value={electricity} onChange={e => setElectricity(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
-                <input required type="number" step="0.01" placeholder="Converge (₱)" value={internet} onChange={e => setInternet(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc' }} />
+                <input required type="number" step="0.01" placeholder="Rent & Water (₱)" value={rentAndWater} onChange={e => setRentAndWater(e.target.value)} style={inputStyle} />
+                <input required type="number" step="0.01" placeholder="Meralco (₱)" value={electricity} onChange={e => setElectricity(e.target.value)} style={inputStyle} />
+                <input required type="number" step="0.01" placeholder="Converge (₱)" value={internet} onChange={e => setInternet(e.target.value)} style={inputStyle} />
                 
-                <button type="submit" style={{ marginTop: '10px', padding: '15px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px' }}>Save to Database</button>
+                <button type="submit" style={{ marginTop: '10px', padding: '15px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>Save to Database</button>
               </form>
             </div>
           </div>
         )}
       </div>
 
-      {/* NAVIGATION */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'white', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: '15px 5px', borderTop: '1px solid #e2e8f0', zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <button onClick={() => setActiveTab('home')} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', color: activeTab === 'home' ? '#2563eb' : '#94a3b8', fontWeight: activeTab === 'home' ? 'bold' : 'normal', cursor: 'pointer' }}>
           <span style={{ fontSize: '22px', marginBottom: '4px' }}>🏠</span><span style={{ fontSize: '11px' }}>Home</span>
