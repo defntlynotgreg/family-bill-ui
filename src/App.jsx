@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Home, ScrollText, Calculator, Plus, Pencil, Trash2, CheckCircle2, Circle, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react';
+import Dock from './Dock';
 
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const fetcher = url => fetch(url).then(res => res.json());
 
-// --- SKELETON LOADER ---
 const SkeletonCard = ({ theme }) => (
   <div style={{ backgroundColor: theme.bgCard, padding: '24px', marginBottom: '16px', borderRadius: '24px', border: `1px solid ${theme.border}`, animation: 'pulse 1.5s infinite ease-in-out' }}>
     <div style={{ height: '24px', width: '120px', backgroundColor: theme.highlightBg, borderRadius: '8px', marginBottom: '20px' }}></div>
@@ -15,15 +16,10 @@ const SkeletonCard = ({ theme }) => (
   </div>
 );
 
-// --- BILL CARD ---
 const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBill, theme }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Swipe-to-Action States
   const [swipeOffset, setSwipeOffset] = useState(0);
-  
-  // FIXED TOUCH TRACKING STATE
   const touchState = useRef({ startX: 0, startY: 0, initialOffset: 0, isScrolling: false, isSwiping: false });
 
   const [editRent, setEditRent] = useState(bill.payables ? bill.payables['Lola Flor (Rent & Water)'] : 0);
@@ -32,57 +28,37 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
 
   const handleTouchStart = (e) => { 
     if (isDashboard || isEditing) return;
-    touchState.current = {
-      startX: e.touches[0].clientX,
-      startY: e.touches[0].clientY,
-      initialOffset: swipeOffset, // Grabs whether the card is open (-120) or closed (0)
-      isScrolling: false,
-      isSwiping: false
-    };
+    touchState.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, initialOffset: swipeOffset, isScrolling: false, isSwiping: false };
   };
 
   const handleTouchMove = (e) => {
     if (isDashboard || isEditing) return;
-    
     const deltaX = e.touches[0].clientX - touchState.current.startX;
     const deltaY = e.touches[0].clientY - touchState.current.startY;
 
     if (!touchState.current.isSwiping && !touchState.current.isScrolling) {
-      if (Math.abs(deltaY) > Math.abs(deltaX)) {
-        touchState.current.isScrolling = true; 
-      } else if (Math.abs(deltaX) > 15) { 
-        touchState.current.isSwiping = true; 
-      }
+      if (Math.abs(deltaY) > Math.abs(deltaX)) touchState.current.isScrolling = true; 
+      else if (Math.abs(deltaX) > 15) touchState.current.isSwiping = true; 
     }
-
     if (touchState.current.isScrolling) return; 
 
     if (touchState.current.isSwiping) {
-      // Calculates the new position cleanly from its starting point
       let newOffset = touchState.current.initialOffset + deltaX;
-      
-      // Clamps the math so you can't drag it too far left or right
       if (newOffset > 0) newOffset = 0;
-      if (newOffset < -120) newOffset = -120;
-      
+      if (newOffset < -140) newOffset = -140;
       setSwipeOffset(newOffset);
     }
   };
 
   const handleTouchEnd = () => {
     if (isDashboard || isEditing || touchState.current.isScrolling) return;
-    
-    // Smooth snapping based on where the card is dropped
-    if (swipeOffset < -60) setSwipeOffset(-120); 
-    else setSwipeOffset(0); 
-    
+    if (swipeOffset < -60) setSwipeOffset(-140); else setSwipeOffset(0); 
     touchState.current.isSwiping = false;
   };
 
   const handleSaveEdit = () => {
     editBill(bill.month, bill.year, parseFloat(editRent), parseFloat(editElec), parseFloat(editInt));
-    setIsEditing(false);
-    setSwipeOffset(0); 
+    setIsEditing(false); setSwipeOffset(0); 
   };
 
   const editInputStyle = { padding: '10px', borderRadius: '8px', border: `1px solid ${theme.border}`, backgroundColor: theme.bgApp, color: theme.textMain, width: '100px', fontFamily: "'Outfit', sans-serif" };
@@ -91,9 +67,9 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '24px', marginBottom: '16px' }}>
       
       {!isDashboard && (
-        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '120px', display: 'flex', gap: '8px', padding: '0 16px', justifyContent: 'flex-end', alignItems: 'center', backgroundColor: '#ef4444', borderRadius: '24px' }}>
-           <button onClick={() => { setIsEditing(true); setSwipeOffset(0); }} style={{ width: '40px', height: '40px', borderRadius: '50%', border: 'none', backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', fontSize: '16px', cursor: 'pointer' }}>✏️</button>
-           <button onClick={() => deleteBill(bill.month, bill.year)} style={{ width: '40px', height: '40px', borderRadius: '50%', border: 'none', backgroundColor: 'white', color: '#ef4444', fontSize: '18px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>🗑️</button>
+        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '140px', display: 'flex', gap: '10px', padding: '0 16px', justifyContent: 'flex-end', alignItems: 'center', backgroundColor: '#ef4444', borderRadius: '24px' }}>
+           <button onClick={() => { setIsEditing(true); setSwipeOffset(0); }} style={{ width: '44px', height: '44px', borderRadius: '50%', border: 'none', backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Pencil size={20} /></button>
+           <button onClick={() => deleteBill(bill.month, bill.year)} style={{ width: '44px', height: '44px', borderRadius: '50%', border: 'none', backgroundColor: 'white', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}><Trash2 size={20} /></button>
         </div>
       )}
 
@@ -109,7 +85,7 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: isDashboard ? '26px' : '22px', fontWeight: '800', color: theme.textMain }}>{bill.month} {bill.year}</h2>
+          <h2 style={{ margin: 0, fontSize: isDashboard ? '26px' : '22px', fontWeight: '800', color: theme.textMain, letterSpacing: '-0.5px' }}>{bill.month} {bill.year}</h2>
           {isDashboard && <span style={{ backgroundColor: '#3b82f6', color: 'white', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', letterSpacing: '0.5px' }}>CURRENT</span>}
         </div>
         
@@ -136,8 +112,8 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
           </div>
         ) : (
           <>
-            <button onClick={() => setIsExpanded(!isExpanded)} style={{ width: '100%', padding: '12px', backgroundColor: 'transparent', border: `1px solid ${theme.border}`, borderRadius: '12px', color: theme.textSub, fontWeight: '600', cursor: 'pointer', marginBottom: '20px', transition: '0.2s', fontFamily: "'Outfit', sans-serif" }}>
-              {isExpanded ? 'Hide Breakdown ▲' : 'Show Breakdown ▼'}
+            <button onClick={() => setIsExpanded(!isExpanded)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '12px', backgroundColor: 'transparent', border: `1px solid ${theme.border}`, borderRadius: '12px', color: theme.textSub, fontWeight: '600', cursor: 'pointer', marginBottom: '20px', transition: '0.2s', fontFamily: "'Outfit', sans-serif" }}>
+              {isExpanded ? 'Hide Breakdown' : 'Show Breakdown'} {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
             <div style={{ maxHeight: isExpanded ? '300px' : '0px', opacity: isExpanded ? 1 : 0, overflow: 'hidden', transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}>
               {bill.payables && (
@@ -151,19 +127,15 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
           </>
         )}
 
-        <h4 style={{ margin: '0 0 12px 0', color: theme.textSub, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tap to mark as paid:</h4>
+        <h4 style={{ margin: '0 0 12px 0', color: theme.textSub, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '800' }}>Payment Status</h4>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
           {['me', 'sister', 'cousin'].map(person => (
             <button key={person} onClick={() => togglePayment(bill.month, bill.year, person, bill.paymentStatus[person])}
-              style={{ padding: '14px 8px', border: 'none', cursor: 'pointer', borderRadius: '14px', fontWeight: '800', fontSize: '14px', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)', backgroundColor: bill.paymentStatus[person] ? '#10b981' : theme.highlightBg, color: bill.paymentStatus[person] ? 'white' : theme.textSub, fontFamily: "'Outfit', sans-serif", transform: 'scale(1)' }}
-              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.93)'} 
-              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}     
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.93)'} 
-              onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              style={{ padding: '14px 8px', border: 'none', cursor: 'pointer', borderRadius: '14px', fontWeight: '800', fontSize: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)', backgroundColor: bill.paymentStatus[person] ? '#10b981' : theme.highlightBg, color: bill.paymentStatus[person] ? 'white' : theme.textSub, fontFamily: "'Outfit', sans-serif", transform: 'scale(1)' }}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.93)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'} onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.93)'} onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              {person.charAt(0).toUpperCase() + person.slice(1)}<br/>
-              <span style={{ fontSize: '20px', display: 'block', marginTop: '6px' }}>{bill.paymentStatus[person] ? '✓' : '○'}</span>
+              {person.charAt(0).toUpperCase() + person.slice(1)}
+              {bill.paymentStatus[person] ? <CheckCircle2 size={22} /> : <Circle size={22} />}
             </button>
           ))}
         </div>
@@ -187,20 +159,21 @@ function App() {
     bgApp: isDarkMode ? '#000000' : '#f4f4f5', 
     bgCard: isDarkMode ? '#0a0a0a' : '#ffffff',
     textMain: isDarkMode ? '#ffffff' : '#000000', 
-    textSub: isDarkMode ? '#737373' : '#475569',
-    border: isDarkMode ? '#262626' : '#cbd5e1', 
+    textSub: isDarkMode ? '#737373' : '#64748b',
+    border: isDarkMode ? '#262626' : '#e2e8f0', 
     inputBg: isDarkMode ? '#171717' : '#ffffff',
-    highlightBg: isDarkMode ? '#171717' : '#f1f5f9', 
+    highlightBg: isDarkMode ? '#171717' : '#f8fafc', 
     navBg: isDarkMode ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.85)',
-    glassBorder: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+    glassBorder: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+    iconColor: isDarkMode ? 'white' : '#64748b',
+    iconActive: '#3b82f6'
   };
   
   const inputStyle = { padding: '16px', borderRadius: '12px', border: `1px solid ${theme.border}`, backgroundColor: theme.inputBg, color: theme.textMain, width: '100%', boxSizing: 'border-box', fontFamily: "'Outfit', sans-serif", fontSize: '16px' };
 
   const { data: database, error, mutate } = useSWR(`${API_BASE}/bills/all`, fetcher);
   
-  let bills = [];
-  let chartData = [];
+  let bills = []; let chartData = [];
   if (database && database.status === 'Success') {
     bills = [...database.data].sort((a, b) => {
       if (a.year !== b.year) return b.year - a.year; 
@@ -236,10 +209,7 @@ function App() {
     const loadingToast = toast.loading("Saving to database...", { style: { background: theme.bgCard, color: theme.textMain, borderRadius: '12px' } });
     fetch(`${API_BASE}/bills/add`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month, year: parseInt(year), rent_and_water: parseFloat(rentAndWater), electricity: parseFloat(electricity), internet: parseFloat(internet) }) })
       .then(res => res.json()).then(resData => {
-        if (resData.status === 'Success') {
-          toast.success("Bill saved!", { id: loadingToast, style: { background: theme.bgCard, color: theme.textMain, borderRadius: '12px' } });
-          mutate(); setRentAndWater(''); setElectricity(''); setInternet(''); setActiveTab('home'); 
-        } else throw new Error();
+        if (resData.status === 'Success') { toast.success("Bill saved!", { id: loadingToast, style: { background: theme.bgCard, color: theme.textMain, borderRadius: '12px' } }); mutate(); setRentAndWater(''); setElectricity(''); setInternet(''); setActiveTab('home'); } else throw new Error();
       }).catch(() => toast.error("Failed to save.", { id: loadingToast }));
   };
 
@@ -260,6 +230,14 @@ function App() {
       .catch(() => toast.error("Failed to update.", { id: loadingToast }));
   };
 
+  // Define Dock Items dynamically based on state
+  const dockItems = [
+    { icon: <Home size={22} color={activeTab === 'home' ? theme.iconActive : theme.iconColor} />, label: 'Home', onClick: () => setActiveTab('home') },
+    { icon: <ScrollText size={22} color={activeTab === 'history' ? theme.iconActive : theme.iconColor} />, label: 'History', onClick: () => setActiveTab('history') },
+    { icon: <Calculator size={22} color={activeTab === 'calculator' ? theme.iconActive : theme.iconColor} />, label: 'Calc', onClick: () => setActiveTab('calculator') },
+    { icon: <Plus size={24} color={activeTab === 'add' ? theme.iconActive : theme.iconColor} />, label: 'Add', onClick: () => setActiveTab('add') }
+  ];
+
   return (
     <>
       <style>{`
@@ -268,20 +246,23 @@ function App() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
-      <div style={{ fontFamily: "'Outfit', sans-serif", backgroundColor: theme.bgApp, minHeight: '100vh', paddingBottom: '90px', color: theme.textMain, transition: 'background-color 0.3s' }}>
+      <div style={{ fontFamily: "'Outfit', sans-serif", backgroundColor: theme.bgApp, minHeight: '100vh', paddingBottom: '110px', color: theme.textMain, transition: 'background-color 0.3s' }}>
         <Toaster position="top-center" />
 
         <div style={{ backgroundColor: theme.navBg, backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '20px', position: 'sticky', top: 0, zIndex: 50, borderBottom: `1px solid ${theme.glassBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ margin: 0, color: theme.textMain, fontSize: '20px', fontWeight: '800', letterSpacing: '0.5px' }}>⚡ Bills Tracker <span style={{ color: '#3b82f6' }}>by GREG</span></h1>
-          <button onClick={() => setIsDarkMode(!isDarkMode)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', padding: '0' }}>{isDarkMode ? '☀️' : '🌙'}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '20px' }}>⚡</span>
+            <h1 style={{ margin: 0, color: theme.textMain, fontSize: '18px', fontWeight: '800', letterSpacing: '0.5px' }}>Bills Tracker <span style={{ color: '#3b82f6' }}>by GREG</span></h1>
+          </div>
+          <button onClick={() => setIsDarkMode(!isDarkMode)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', display: 'flex', alignItems: 'center', color: theme.textMain }}>
+            {isDarkMode ? <Sun size={22} /> : <Moon size={22} />}
+          </button>
         </div>
 
         <div style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
-          
           {activeTab === 'home' && (
             <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
               <h3 style={{ marginTop: 0, color: theme.textSub, letterSpacing: '1px', textTransform: 'uppercase', fontSize: '13px', fontWeight: '800' }}>Dashboard</h3>
-              
               {!isLoading && chartData.length > 0 && (
                 <div style={{ backgroundColor: theme.bgCard, padding: '20px 20px 5px 5px', borderRadius: '24px', marginBottom: '24px', border: `1px solid ${theme.border}`, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
                   <h4 style={{ margin: '0 0 20px 20px', color: theme.textSub, fontSize: '12px', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>6-Month Trend (₱)</h4>
@@ -296,7 +277,6 @@ function App() {
                   </ResponsiveContainer>
                 </div>
               )}
-
               {error ? <p style={{ color: '#ef4444', fontWeight: 'bold' }}>⚠️ Server is asleep. Please refresh in 60s.</p> : isLoading ? <SkeletonCard theme={theme} /> : currentBill ? <BillCard bill={currentBill} isDashboard={true} togglePayment={togglePayment} deleteBill={deleteBill} editBill={editBill} theme={theme} /> : <p>No bills found.</p>}
             </div>
           )}
@@ -350,16 +330,8 @@ function App() {
           )}
         </div>
 
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: theme.navBg, backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: '15px 5px', borderTop: `1px solid ${theme.glassBorder}`, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          {['home', 'history', 'calculator', 'add'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', color: activeTab === tab ? '#3b82f6' : theme.textSub, fontWeight: activeTab === tab ? '800' : '600', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>
-              <span style={{ fontSize: '24px', marginBottom: '4px', transform: activeTab === tab ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-                {tab === 'home' ? '🏠' : tab === 'history' ? '📜' : tab === 'calculator' ? '🧮' : '➕'}
-              </span>
-              <span style={{ fontSize: '11px', textTransform: 'capitalize', letterSpacing: '0.5px' }}>{tab === 'calculator' ? 'Calc' : tab}</span>
-            </button>
-          ))}
-        </div>
+        {/* REACT BITS DOCK NAVIGATION */}
+        <Dock items={dockItems} panelHeight={64} baseItemSize={46} magnification={65} />
       </div>
     </>
   );
