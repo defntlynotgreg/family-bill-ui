@@ -23,10 +23,9 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
   // Swipe-to-Action States
   const [swipeOffset, setSwipeOffset] = useState(0);
   
-  // Advanced Touch Tracking (Solves the hyper-sensitivity bug)
-  const touchState = useRef({ startX: 0, startY: 0, isScrolling: false, isSwiping: false });
+  // FIXED TOUCH TRACKING STATE
+  const touchState = useRef({ startX: 0, startY: 0, initialOffset: 0, isScrolling: false, isSwiping: false });
 
-  // Edit States
   const [editRent, setEditRent] = useState(bill.payables ? bill.payables['Lola Flor (Rent & Water)'] : 0);
   const [editElec, setEditElec] = useState(bill.payables ? bill.payables['Meralco (Electricity)'] : 0);
   const [editInt, setEditInt] = useState(bill.payables ? bill.payables['Converge (Internet)'] : 0);
@@ -36,6 +35,7 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
     touchState.current = {
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY,
+      initialOffset: swipeOffset, // Grabs whether the card is open (-120) or closed (0)
       isScrolling: false,
       isSwiping: false
     };
@@ -47,27 +47,34 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
     const deltaX = e.touches[0].clientX - touchState.current.startX;
     const deltaY = e.touches[0].clientY - touchState.current.startY;
 
-    // Detect user's intent within the first few pixels of movement
     if (!touchState.current.isSwiping && !touchState.current.isScrolling) {
       if (Math.abs(deltaY) > Math.abs(deltaX)) {
-        touchState.current.isScrolling = true; // User is trying to scroll vertically
+        touchState.current.isScrolling = true; 
       } else if (Math.abs(deltaX) > 15) { 
-        touchState.current.isSwiping = true; // User intentionally swiped horizontally past the 15px deadzone
+        touchState.current.isSwiping = true; 
       }
     }
 
-    if (touchState.current.isScrolling) return; // Completely ignore horizontal movement if scrolling
+    if (touchState.current.isScrolling) return; 
 
     if (touchState.current.isSwiping) {
-      if (deltaX < 0 && deltaX > -120) setSwipeOffset(deltaX);
+      // Calculates the new position cleanly from its starting point
+      let newOffset = touchState.current.initialOffset + deltaX;
+      
+      // Clamps the math so you can't drag it too far left or right
+      if (newOffset > 0) newOffset = 0;
+      if (newOffset < -120) newOffset = -120;
+      
+      setSwipeOffset(newOffset);
     }
   };
 
   const handleTouchEnd = () => {
     if (isDashboard || isEditing || touchState.current.isScrolling) return;
     
-    if (swipeOffset < -50) setSwipeOffset(-120); // Snap open if swiped far enough
-    else setSwipeOffset(0); // Snap closed if not
+    // Smooth snapping based on where the card is dropped
+    if (swipeOffset < -60) setSwipeOffset(-120); 
+    else setSwipeOffset(0); 
     
     touchState.current.isSwiping = false;
   };
@@ -97,12 +104,11 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
           border: isDashboard ? '2px solid #3b82f6' : `1px solid ${theme.border}`, 
           color: theme.textMain, position: 'relative', zIndex: 2, 
           transform: `translateX(${swipeOffset}px)`,
-          transition: swipeOffset === 0 || swipeOffset === -120 ? 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none',
+          transition: touchState.current.isSwiping ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
           boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          {/* Explicitly bound color to textMain to fix Light Mode bug */}
           <h2 style={{ margin: 0, fontSize: isDashboard ? '26px' : '22px', fontWeight: '800', color: theme.textMain }}>{bill.month} {bill.year}</h2>
           {isDashboard && <span style={{ backgroundColor: '#3b82f6', color: 'white', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', letterSpacing: '0.5px' }}>CURRENT</span>}
         </div>
@@ -180,7 +186,7 @@ function App() {
   const theme = {
     bgApp: isDarkMode ? '#000000' : '#f4f4f5', 
     bgCard: isDarkMode ? '#0a0a0a' : '#ffffff',
-    textMain: isDarkMode ? '#ffffff' : '#000000', // Deepened to pitch black for max Light Mode visibility
+    textMain: isDarkMode ? '#ffffff' : '#000000', 
     textSub: isDarkMode ? '#737373' : '#475569',
     border: isDarkMode ? '#262626' : '#cbd5e1', 
     inputBg: isDarkMode ? '#171717' : '#ffffff',
@@ -189,7 +195,6 @@ function App() {
     glassBorder: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
   };
   
-  // Explicitly bound textMain color to ensure dropdown options don't turn white
   const inputStyle = { padding: '16px', borderRadius: '12px', border: `1px solid ${theme.border}`, backgroundColor: theme.inputBg, color: theme.textMain, width: '100%', boxSizing: 'border-box', fontFamily: "'Outfit', sans-serif", fontSize: '16px' };
 
   const { data: database, error, mutate } = useSWR(`${API_BASE}/bills/all`, fetcher);
@@ -283,7 +288,6 @@ function App() {
                   <ResponsiveContainer width="100%" height={160}>
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke={theme.border} vertical={false} />
-                      {/* Explicit stroke colors on charts to guarantee Light Mode contrast */}
                       <XAxis dataKey="name" stroke={theme.textSub} fontSize={12} tickLine={false} axisLine={false} fontFamily="'Outfit', sans-serif" fontWeight={600} />
                       <YAxis stroke={theme.textSub} fontSize={12} tickLine={false} axisLine={false} width={45} tickFormatter={(v) => `${(v/1000).toFixed(1)}k`} fontFamily="'Outfit', sans-serif" fontWeight={600} />
                       <Tooltip contentStyle={{ backgroundColor: theme.bgApp, border: `1px solid ${theme.border}`, borderRadius: '12px', color: theme.textMain, fontWeight: '600' }} itemStyle={{ color: '#3b82f6', fontWeight: '800' }} />
