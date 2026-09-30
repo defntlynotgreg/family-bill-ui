@@ -3,11 +3,11 @@ import useSWR from 'swr';
 import toast, { Toaster } from 'react-hot-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Home, ScrollText, Calculator, Plus, Pencil, Trash2, CheckCircle2, Circle, Moon, Sun, ChevronDown, ChevronUp } from 'lucide-react';
-import Dock from './Dock';
 
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const fetcher = url => fetch(url).then(res => res.json());
 
+// --- SKELETON LOADER ---
 const SkeletonCard = ({ theme }) => (
   <div style={{ backgroundColor: theme.bgCard, padding: '24px', marginBottom: '16px', borderRadius: '24px', border: `1px solid ${theme.border}`, animation: 'pulse 1.5s infinite ease-in-out' }}>
     <div style={{ height: '24px', width: '120px', backgroundColor: theme.highlightBg, borderRadius: '8px', marginBottom: '20px' }}></div>
@@ -16,9 +16,12 @@ const SkeletonCard = ({ theme }) => (
   </div>
 );
 
+// --- BILL CARD ---
 const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBill, theme }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Swipe-to-Action States
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchState = useRef({ startX: 0, startY: 0, initialOffset: 0, isScrolling: false, isSwiping: false });
 
@@ -165,8 +168,6 @@ function App() {
     highlightBg: isDarkMode ? '#171717' : '#f8fafc', 
     navBg: isDarkMode ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.85)',
     glassBorder: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-    iconColor: isDarkMode ? 'white' : '#64748b',
-    iconActive: '#3b82f6'
   };
   
   const inputStyle = { padding: '16px', borderRadius: '12px', border: `1px solid ${theme.border}`, backgroundColor: theme.inputBg, color: theme.textMain, width: '100%', boxSizing: 'border-box', fontFamily: "'Outfit', sans-serif", fontSize: '16px' };
@@ -230,18 +231,10 @@ function App() {
       .catch(() => toast.error("Failed to update.", { id: loadingToast }));
   };
 
-  // Define Dock Items dynamically based on state
-  const dockItems = [
-    { icon: <Home size={22} color={activeTab === 'home' ? theme.iconActive : theme.iconColor} />, label: 'Home', onClick: () => setActiveTab('home') },
-    { icon: <ScrollText size={22} color={activeTab === 'history' ? theme.iconActive : theme.iconColor} />, label: 'History', onClick: () => setActiveTab('history') },
-    { icon: <Calculator size={22} color={activeTab === 'calculator' ? theme.iconActive : theme.iconColor} />, label: 'Calc', onClick: () => setActiveTab('calculator') },
-    { icon: <Plus size={24} color={activeTab === 'add' ? theme.iconActive : theme.iconColor} />, label: 'Add', onClick: () => setActiveTab('add') }
-  ];
-
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
         @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 0.3; } 100% { opacity: 0.6; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
@@ -330,8 +323,66 @@ function App() {
           )}
         </div>
 
-        {/* REACT BITS DOCK NAVIGATION */}
-        <Dock items={dockItems} panelHeight={64} baseItemSize={46} magnification={65} />
+        {/* BANKING-STYLE BOTTOM NAVIGATION */}
+        <div style={{ 
+          position: 'fixed', 
+          bottom: 0, 
+          left: 0, 
+          right: 0, 
+          backgroundColor: theme.navBg, 
+          backdropFilter: 'blur(16px)', 
+          WebkitBackdropFilter: 'blur(16px)', 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
+          paddingTop: '12px',
+          paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', 
+          borderTop: `1px solid ${theme.glassBorder}`, 
+          zIndex: 50 
+        }}>
+          {[
+            { id: 'home', icon: Home, label: 'Home' },
+            { id: 'history', icon: ScrollText, label: 'History' },
+            { id: 'calculator', icon: Calculator, label: 'Calc' },
+            { id: 'add', icon: Plus, label: 'Add' }
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <button 
+                key={tab.id} 
+                onClick={() => setActiveTab(tab.id)} 
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  gap: '6px', 
+                  cursor: 'pointer', 
+                  fontFamily: "'Outfit', sans-serif",
+                  WebkitTapHighlightColor: 'transparent' 
+                }}
+              >
+                <Icon 
+                  size={24} 
+                  color={isActive ? '#3b82f6' : theme.textSub} 
+                  strokeWidth={isActive ? 2.5 : 2} 
+                  style={{ transition: 'all 0.2s ease-in-out' }}
+                />
+                <span style={{ 
+                  fontSize: '11px', 
+                  fontWeight: isActive ? '700' : '500', 
+                  color: isActive ? '#3b82f6' : theme.textSub,
+                  transition: 'all 0.2s ease-in-out'
+                }}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </>
   );
