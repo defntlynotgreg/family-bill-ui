@@ -7,7 +7,6 @@ import { Home, ScrollText, Calculator, Plus, Pencil, Trash2, CheckCircle2, Circl
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const fetcher = url => fetch(url).then(res => res.json());
 
-// --- SKELETON LOADER ---
 const SkeletonCard = ({ theme }) => (
   <div style={{ backgroundColor: theme.bgCard, padding: '24px', marginBottom: '16px', borderRadius: '24px', border: `1px solid ${theme.border}`, animation: 'pulse 1.5s infinite ease-in-out' }}>
     <div style={{ height: '24px', width: '120px', backgroundColor: theme.highlightBg, borderRadius: '8px', marginBottom: '20px' }}></div>
@@ -16,12 +15,10 @@ const SkeletonCard = ({ theme }) => (
   </div>
 );
 
-// --- BILL CARD ---
 const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBill, theme }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
-  // Swipe-to-Action States
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchState = useRef({ startX: 0, startY: 0, initialOffset: 0, isScrolling: false, isSwiping: false });
 
@@ -60,7 +57,8 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
   };
 
   const handleSaveEdit = () => {
-    editBill(bill.month, bill.year, parseFloat(editRent), parseFloat(editElec), parseFloat(editInt));
+    // Math failsafes: '|| 0' prevents NaN crashes if an input is left completely blank
+    editBill(bill.month, bill.year, parseFloat(editRent || 0), parseFloat(editElec || 0), parseFloat(editInt || 0));
     setIsEditing(false); setSwipeOffset(0); 
   };
 
@@ -78,14 +76,7 @@ const BillCard = ({ bill, isDashboard = false, togglePayment, deleteBill, editBi
 
       <div 
         onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
-        style={{ 
-          backgroundColor: theme.bgCard, padding: '24px', borderRadius: '24px', 
-          border: isDashboard ? '2px solid #3b82f6' : `1px solid ${theme.border}`, 
-          color: theme.textMain, position: 'relative', zIndex: 2, 
-          transform: `translateX(${swipeOffset}px)`,
-          transition: touchState.current.isSwiping ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
-        }}
+        style={{ backgroundColor: theme.bgCard, padding: '24px', borderRadius: '24px', border: isDashboard ? '2px solid #3b82f6' : `1px solid ${theme.border}`, color: theme.textMain, position: 'relative', zIndex: 2, transform: `translateX(${swipeOffset}px)`, transition: touchState.current.isSwiping ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ margin: 0, fontSize: isDashboard ? '26px' : '22px', fontWeight: '800', color: theme.textMain, letterSpacing: '-0.5px' }}>{bill.month} {bill.year}</h2>
@@ -163,7 +154,7 @@ function App() {
     bgCard: isDarkMode ? '#0a0a0a' : '#ffffff',
     textMain: isDarkMode ? '#ffffff' : '#000000', 
     textSub: isDarkMode ? '#737373' : '#64748b',
-    border: isDarkMode ? '#262626' : '#e2e8f0', 
+    border: isDarkMode ? '#262626' : '#cbd5e1', 
     inputBg: isDarkMode ? '#171717' : '#ffffff',
     highlightBg: isDarkMode ? '#171717' : '#f8fafc', 
     navBg: isDarkMode ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.85)',
@@ -201,17 +192,19 @@ function App() {
     const updatedBills = bills.map(b => (b.month === month && b.year === year) ? { ...b, paymentStatus: { ...b.paymentStatus, [person]: updatedStatus } } : b);
     mutate({ status: 'Success', data: updatedBills }, false);
     fetch(`${API_BASE}/bills/update-payment`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month, year, person, has_paid: updatedStatus }) })
-      .then(res => res.json()).then(resData => { if (resData.status === 'Success') mutate(); else throw new Error(); })
-      .catch(() => { toast.error("Network error."); mutate(); });
+      .then(res => res.json()).then(resData => { if (resData.status === 'Success') mutate(); else throw new Error(resData.message); })
+      .catch((err) => { toast.error(err.message || "Network error."); mutate(); });
   };
 
   const handleAddBill = (e) => {
     e.preventDefault();
     const loadingToast = toast.loading("Saving to database...", { style: { background: theme.bgCard, color: theme.textMain, borderRadius: '12px' } });
     fetch(`${API_BASE}/bills/add`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month, year: parseInt(year), rent_and_water: parseFloat(rentAndWater), electricity: parseFloat(electricity), internet: parseFloat(internet) }) })
-      .then(res => res.json()).then(resData => {
-        if (resData.status === 'Success') { toast.success("Bill saved!", { id: loadingToast, style: { background: theme.bgCard, color: theme.textMain, borderRadius: '12px' } }); mutate(); setRentAndWater(''); setElectricity(''); setInternet(''); setActiveTab('home'); } else throw new Error();
-      }).catch(() => toast.error("Failed to save.", { id: loadingToast }));
+      .then(async res => {
+        if (!res.ok) throw new Error("API not found. Is Render deployed?");
+        const resData = await res.json();
+        if (resData.status === 'Success') { toast.success("Bill saved!", { id: loadingToast, style: { background: theme.bgCard, color: theme.textMain, borderRadius: '12px' } }); mutate(); setRentAndWater(''); setElectricity(''); setInternet(''); setActiveTab('home'); } else throw new Error(resData.message);
+      }).catch((err) => toast.error(err.message, { id: loadingToast }));
   };
 
   const deleteBill = (month, year) => {
@@ -219,16 +212,28 @@ function App() {
     const loadingToast = toast.loading("Deleting...", { style: { background: theme.bgCard, color: theme.textMain, borderRadius: '12px' } });
     const updatedBills = bills.filter(b => !(b.month === month && b.year === year));
     mutate({ status: 'Success', data: updatedBills }, false);
-    fetch(`${API_BASE}/bills/delete`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month, year }) })
-      .then(res => res.json()).then(resData => { if (resData.status === 'Success') { toast.success("Deleted!", { id: loadingToast }); mutate(); } else throw new Error(); })
-      .catch(() => { toast.error("Failed to delete.", { id: loadingToast }); mutate(); });
+    
+    // Converted to safe POST route
+    fetch(`${API_BASE}/bills/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month, year }) })
+      .then(async res => {
+        if (!res.ok) throw new Error("API not found. Is Render deployed?");
+        const resData = await res.json();
+        if (resData.status === 'Success') { toast.success("Deleted!", { id: loadingToast }); mutate(); } else throw new Error(resData.message); 
+      })
+      .catch((err) => { toast.error(err.message, { id: loadingToast }); mutate(); });
   };
 
   const editBill = (month, year, rent, elec, int) => {
     const loadingToast = toast.loading("Updating...", { style: { background: theme.bgCard, color: theme.textMain, borderRadius: '12px' } });
-    fetch(`${API_BASE}/bills/edit`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month, year, rent_and_water: rent, electricity: elec, internet: int }) })
-      .then(res => res.json()).then(resData => { if (resData.status === 'Success') { toast.success("Updated!", { id: loadingToast }); mutate(); } else throw new Error(); })
-      .catch(() => toast.error("Failed to update.", { id: loadingToast }));
+    
+    // Converted to safe POST route and extracts exact errors
+    fetch(`${API_BASE}/bills/edit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ month, year, rent_and_water: rent, electricity: elec, internet: int }) })
+      .then(async res => {
+        if (!res.ok) throw new Error("API not found. Is Render deployed?");
+        const resData = await res.json();
+        if (resData.status === 'Success') { toast.success("Updated!", { id: loadingToast }); mutate(); } else throw new Error(resData.message || "Database update failed"); 
+      })
+      .catch((err) => toast.error(err.message, { id: loadingToast }));
   };
 
   return (
@@ -323,62 +328,13 @@ function App() {
           )}
         </div>
 
-        {/* BANKING-STYLE BOTTOM NAVIGATION */}
-        <div style={{ 
-          position: 'fixed', 
-          bottom: 0, 
-          left: 0, 
-          right: 0, 
-          backgroundColor: theme.navBg, 
-          backdropFilter: 'blur(16px)', 
-          WebkitBackdropFilter: 'blur(16px)', 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(4, 1fr)', 
-          paddingTop: '12px',
-          paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', 
-          borderTop: `1px solid ${theme.glassBorder}`, 
-          zIndex: 50 
-        }}>
-          {[
-            { id: 'home', icon: Home, label: 'Home' },
-            { id: 'history', icon: ScrollText, label: 'History' },
-            { id: 'calculator', icon: Calculator, label: 'Calc' },
-            { id: 'add', icon: Plus, label: 'Add' }
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: theme.navBg, backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', paddingTop: '12px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: `1px solid ${theme.glassBorder}`, zIndex: 50 }}>
+          {[{ id: 'home', icon: Home, label: 'Home' }, { id: 'history', icon: ScrollText, label: 'History' }, { id: 'calculator', icon: Calculator, label: 'Calc' }, { id: 'add', icon: Plus, label: 'Add' }].map(tab => {
+            const Icon = tab.icon; const isActive = activeTab === tab.id;
             return (
-              <button 
-                key={tab.id} 
-                onClick={() => setActiveTab(tab.id)} 
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  gap: '6px', 
-                  cursor: 'pointer', 
-                  fontFamily: "'Outfit', sans-serif",
-                  WebkitTapHighlightColor: 'transparent' 
-                }}
-              >
-                <Icon 
-                  size={24} 
-                  color={isActive ? '#3b82f6' : theme.textSub} 
-                  strokeWidth={isActive ? 2.5 : 2} 
-                  style={{ transition: 'all 0.2s ease-in-out' }}
-                />
-                <span style={{ 
-                  fontSize: '11px', 
-                  fontWeight: isActive ? '700' : '500', 
-                  color: isActive ? '#3b82f6' : theme.textSub,
-                  transition: 'all 0.2s ease-in-out'
-                }}>
-                  {tab.label}
-                </span>
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', cursor: 'pointer', fontFamily: "'Outfit', sans-serif", WebkitTapHighlightColor: 'transparent' }}>
+                <Icon size={24} color={isActive ? '#3b82f6' : theme.textSub} strokeWidth={isActive ? 2.5 : 2} style={{ transition: 'all 0.2s ease-in-out' }} />
+                <span style={{ fontSize: '11px', fontWeight: isActive ? '700' : '500', color: isActive ? '#3b82f6' : theme.textSub, transition: 'all 0.2s ease-in-out' }}>{tab.label}</span>
               </button>
             );
           })}
